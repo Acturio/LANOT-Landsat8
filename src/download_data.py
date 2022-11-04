@@ -1,4 +1,4 @@
-# python download_data.py --filetype='band' --credPath='../auth/api_key.yaml' --savePath='../data/data_20201020'
+# python download_data.py --filetype='band' --credPath='../auth/api_key.yaml' --savePath='../data/data_20221028'
 # python download_data.py --listScenes --filetype='band' --credPath='../auth/api_key.yaml' --savePath='../data/data_20150721' --scenesFile='../test/scenes'
 import time
 import re
