@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
+#import pandas as pd
+#import numpy as np
 import os, glob
 import re
 import ipython_genutils
@@ -13,7 +13,7 @@ from natsort import natsorted
 #### Lectura de parámetros de radiancia y reflectancia ####
 ###########################################################
 
-ruta_archivos = "../data_20150721"
+ruta_archivos = "LANOT-Landsat8/data/data_20150721"
 os.chdir(ruta_archivos)
 os.getcwd()
 
@@ -47,20 +47,6 @@ with open(glob.glob("*MTL.txt")[0], "r") as metadata:
         if pattern_rad_add.search(line) != None:
             linenum += 1
             lines_rad_add.append((linenum, line.rstrip('\n')))
-
-
-# for element in lines_ref_mult:
-#     print("Line ", str(element[0]), ": " + element[1].split(' = ')[1])
-# 
-# for element in lines_ref_add:
-#     print("Line ", str(element[0]), ": " + element[1].split(' = ')[1])
-# 
-# for element in lines_rad_mult:
-#     print("Line ", str(element[0]), ": " + element[1])
-# 
-# for element in lines_rad_add:
-#     print("Line ", str(element[0]), ": " + element[1])
-
 
 #######################################
 #### Lectura de bandas satelitales ####
@@ -124,7 +110,7 @@ plt.show()
 s = SixS()
 
 t = "16:09:45.2093320Z"
-(hora, minutos, segundo) = t.split(':')
+(hora, minuto, segundo) = t.split(':')
 decimal_time = int(hora) + (int(minuto) / 60) + (float(segundo[0:-1])/3600)
 
 s.geometry.month = 7
@@ -142,28 +128,29 @@ s.ground_reflectance = GroundReflectance.HomogeneousLambertian(GroundReflectance
 s.atmos_profile = AtmosProfile.FromLatitudeAndDate(20.22962, "2015-07-21")
 s.aero_profile = AeroProfile.PredefinedType(AeroProfile.Maritime)
 s.atmos_corr = AtmosCorr.AtmosCorrLambertianFromRadiance(500)
-wavelengths = [0.44, 0.48, 0.56, 0.655, 0.865, 1.61, 2.20, 0.59] # B1 - B8
 
-for wv in wavelengths:
-    s.wavelength = Wavelength(0.44)
+wavelengths = [0.44, 0.48, 0.56, 0.655, 0.865, 1.61, 2.20, 0.59] # B1 - B8
+rayleigh_conv = {}
+
+for j in range(0, len(wavelengths)):
+    
+    # atmospheric correction result (Rayleigh): 
+    # y=xa*ref -xb ; acr = y/(1.+xc*y)
+    print("\n Rayleigh correction for band: " + str(j + 1))
+
+    s.wavelength = Wavelength(wavelengths[j])
     s.run()
     coef_xa = s.outputs.values['coef_xa']
     coef_xb = s.outputs.values['coef_xb']
     coef_xc = s.outputs.values['coef_xc']
-    print(coef_xa)
-    print(coef_xb)
-    print(coef_xc)
-    
-    reflectance_pixel = radiance_conv["B1"].copy()
-    y = coef_xa * reflectance_pixel - coef_xb
-    acr = y/(1. + coef_xc * y)
+
+    reflectance_pixels = radiance_conv["B"+str(int(j)+1)].copy()
+    y = coef_xa * reflectance_pixels - coef_xb
+    rayleigh_conv["B"+str(int(j)+1)] = y/(1. + coef_xc * y)
+    print(" Ok!")
 
 
-# atmospheric correction result (Rayleigh): 
-# y=xa*ref -xb ; acr = y/(1.+xc*y)
-
-print(s.outputs.fulltext)
-
+#######################################################################
 
 fig, axes = plt.subplots(nrows=1, ncols=2)
 
@@ -174,7 +161,7 @@ axes[0].set_ylabel("Latitude") # nombre del eje Y
 axes[0].set_xlabel("Longitude") # nombre del eje X
 
 # Ploteamos la segunda imagen en el lado derecho
-axes[1].imshow(acr)
+axes[1].imshow(rayleigh_conv["B1"])
 axes[1].set_title("Band 1 - Rayleigh Correction") # Titulo
 axes[1].set_ylabel("Latitude") # nombre del eje Y
 axes[1].set_xlabel("Longitude") # nombre del eje X
