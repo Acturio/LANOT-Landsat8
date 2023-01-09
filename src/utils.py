@@ -271,7 +271,7 @@ def Fai(lambda_data, rayleigh_data):
   lambda_nir = lambda_data["B5"].copy()
   lambda_swir = lambda_data["B6"].copy()
   
-  R_nir = rayleigh_data["B4"] + (( rayleigh_data["B6"] - rayleigh_data["B4"] ) * ((lambda_nir - lambda_red)/(lambda_swir - lambda_red)))
+  R_nir = rayleigh_data["B4"] + (( rayleigh_data["B6"] - rayleigh_data["B4"] ) * ((lambda_nir - lambda_red + 1)/(lambda_swir - lambda_red + 1)))
   fai = rayleigh_data["B5"] - R_nir
 
   return(fai)

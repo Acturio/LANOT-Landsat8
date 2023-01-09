@@ -14,7 +14,7 @@ import numpy as np
 ###########################################################
 
 #ruta_archivos = "data/data_20150721"
-ruta_archivos = "LANOT-Landsat8/data/data_20150721"
+ruta_archivos = "data/data_20150721"
 
 #os.chdir(ruta_archivos)
 #os.getcwd()
@@ -202,8 +202,7 @@ plt.show()
 
 ####################################################
 
-fai_radiance = Fai(lambda_data = radiance_conv, rayleigh_data = rayleigh_conv)
-
+# fai_radiance = Fai(lambda_data = radiance_conv, rayleigh_data = rayleigh_conv)
 fai_reflectance = Fai(lambda_data = reflectance_conv, rayleigh_data = rayleigh_conv)
 
 #######################################################################
@@ -211,13 +210,13 @@ fai_reflectance = Fai(lambda_data = reflectance_conv, rayleigh_data = rayleigh_c
 fig, axes = plt.subplots(nrows=1, ncols=2)
 
 # Ploteamos la primera imagen en el lado izquierdo
-axes[0].imshow(files["B1"])
+axes[0].imshow( ((files["B1"] - np.mean(files["B1"]))/(np.std(files["B1"]) )) )
 axes[0].set_title("Band 1 - Original") # Titulo
 axes[0].set_ylabel("Latitude") # nombre del eje Y
 axes[0].set_xlabel("Longitude") # nombre del eje X
 
 # Ploteamos la segunda imagen en el lado derecho
-axes[1].imshow( fai_reflectance )
+axes[1].imshow( ((fai_reflectance - np.mean(fai_reflectance))/(np.std(fai_reflectance) )) )
 axes[1].set_title("Floating Algae Index") # Titulo
 axes[1].set_ylabel("Latitude") # nombre del eje Y
 axes[1].set_xlabel("Longitude") # nombre del eje X
