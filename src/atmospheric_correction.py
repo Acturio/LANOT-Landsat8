@@ -1,28 +1,30 @@
 import matplotlib.pyplot as plt
-#import pandas as pd
-#import numpy as np
 import os, glob
 import re
 import ipython_genutils
 from Py6S import *
 from osgeo import gdal
 from natsort import natsorted
+#import pandas as pd
+import numpy as np
 
 
 ###########################################################
 #### Lectura de parámetros de radiancia y reflectancia ####
 ###########################################################
 
+#ruta_archivos = "data/data_20150721"
 ruta_archivos = "LANOT-Landsat8/data/data_20150721"
-os.chdir(ruta_archivos)
-os.getcwd()
+
+#os.chdir(ruta_archivos)
+#os.getcwd()
 
 lines_ref_mult = []
 lines_ref_add = []
 linenum = 0
 pattern_ref_mult = re.compile(r"REFLECTANCE_MULT_BAND_")
 pattern_ref_add = re.compile(r"REFLECTANCE_ADD_BAND_")
-with open(glob.glob("*MTL.txt")[0], "r") as metadata:
+with open(glob.glob(ruta_archivos + "/" + "*MTL.txt")[0], "r") as metadata:
     for line in metadata:
         if pattern_ref_mult.search(line) != None:
             linenum += 1
@@ -33,12 +35,16 @@ with open(glob.glob("*MTL.txt")[0], "r") as metadata:
             lines_ref_add.append((linenum, line.rstrip('\n')))
 
 
+lines_ref_add, lines_ref_mult = get_reflectance_parameters(ruta_archivos)
+
+
+
 lines_rad_mult = []
 lines_rad_add = []
 linenum = 0
 pattern_rad_mult = re.compile(r"RADIANCE_MULT_BAND_")
 pattern_rad_add = re.compile(r"RADIANCE_ADD_BAND_")
-with open(glob.glob("*MTL.txt")[0], "r") as metadata:
+with open(glob.glob(ruta_archivos + "/" + "*MTL.txt")[0], "r") as metadata:
     for line in metadata:
         if pattern_rad_mult.search(line) != None:
             linenum += 1
@@ -48,30 +54,41 @@ with open(glob.glob("*MTL.txt")[0], "r") as metadata:
             linenum += 1
             lines_rad_add.append((linenum, line.rstrip('\n')))
 
+
+lines_rad_add, lines_rad_mult = get_radiance_parameters(ruta_archivos)
+
 #######################################
 #### Lectura de bandas satelitales ####
 #######################################
 
-band_pathfiles = natsorted(glob.glob("*_B*TIF"))
+#band_pathfiles = natsorted(glob.glob(ruta_archivos + "/" + "*_B*TIF"))
+band_pathfiles = get_band_pathfiles(ruta_archivos)
+
 
 files = {}
 reflectance_conv = {}
-radiance_conv = {}
 
 # Reflectance
-# print("\n Initializing reflectance conversion... \n")
-# for i in range(0, len(lines_ref_mult)):
-#     nir_img = gdal.Open(band_pathfiles[i])
-#     band = nir_img.ReadAsArray()
-#     files["B"+str(int(i)+1)] = band
-#     reflectance_mult_band = float(lines_ref_mult[i][1].split(" = ")[1])
-#     reflectance_add_band = float(lines_ref_add[i][1].split(" = ")[1])
-#     reflectance_conv["B"+str(int(i)+1)] = (reflectance_mult_band * band) + reflectance_add_band
-#     print("Band " + str(int(i)+1)) 
-#     print("Reflectance multiplicative factor: " + str(reflectance_mult_band))
-#     print("Reflectance additive factor: " + str(reflectance_add_band) + "\n")
-#     # Radiancef add: " + str(reflectance_add_band) + "\n")
+print("\n Initializing reflectance conversion... \n")
+for i in range(0, len(lines_ref_mult)):
+    nir_img = gdal.Open(band_pathfiles[i])
+    band = nir_img.ReadAsArray()
+    files["B"+str(int(i)+1)] = band
+    reflectance_mult_band = float(lines_ref_mult[i][1].split(" = ")[1])
+    reflectance_add_band = float(lines_ref_add[i][1].split(" = ")[1])
+    reflectance_conv["B"+str(int(i)+1)] = (reflectance_mult_band * band) + reflectance_add_band
+    print("Band " + str(int(i)+1)) 
+    print("Reflectance multiplicative factor: " + str(reflectance_mult_band))
+    print("Reflectance additive factor: " + str(reflectance_add_band) + "\n")
 
+reflectance_conv = reflectance_transformation(
+    ref_mult_params = lines_ref_add, 
+    ref_add_params = lines_ref_add, 
+    band_pathfiles = band_pathfiles
+    )
+
+
+radiance_conv = {}
 # Radiance
 print("\n Initializing radiance conversion... \n")
 for i in range(0, len(lines_rad_mult)):
@@ -85,6 +102,13 @@ for i in range(0, len(lines_rad_mult)):
     print("Radiance multiplicative factor: " + str(radiance_mult_band))
     print("Radiance additive factor: " + str(radiance_add_band) + "\n")
 
+
+radiance_conv = radiance_transformation(
+    rad_mult_params = lines_rad_mult, 
+    rad_add_params = lines_rad_add, 
+    band_pathfiles = band_pathfiles
+    )
+
 # files["B1"]
 # reflectance_conv["B1"]
 # radiance_conv["B1"]
@@ -93,14 +117,14 @@ for i in range(0, len(lines_rad_mult)):
 fig, axes = plt.subplots(nrows=1, ncols=2)
 
 # Ploteamos la primera imagen en el lado izquierdo
-axes[0].imshow(files["B4"])
-axes[0].set_title("Band 4 - Original") # Titulo
+axes[0].imshow(files["B1"])
+axes[0].set_title("Band 1 - Original") # Titulo
 axes[0].set_ylabel("Latitude") # nombre del eje Y
 axes[0].set_xlabel("Longitude") # nombre del eje X
 
 # Ploteamos la segunda imagen en el lado derecho
-axes[1].imshow(radiance_conv["B4"])
-axes[1].set_title("Band 4 - Radiance conversion") # Titulo
+axes[1].imshow(radiance_conv["B1"])
+axes[1].set_title("Band 1 - Radiance conversion") # Titulo
 axes[1].set_ylabel("Latitude") # nombre del eje Y
 axes[1].set_xlabel("Longitude") # nombre del eje X
 plt.show()
@@ -127,9 +151,9 @@ s.altitudes.set_target_sea_level()
 s.ground_reflectance = GroundReflectance.HomogeneousLambertian(GroundReflectance.ClearWater)
 s.atmos_profile = AtmosProfile.FromLatitudeAndDate(20.22962, "2015-07-21")
 s.aero_profile = AeroProfile.PredefinedType(AeroProfile.Maritime)
-s.atmos_corr = AtmosCorr.AtmosCorrLambertianFromRadiance(500)
+s.atmos_corr = AtmosCorr.AtmosCorrLambertianFromRadiance(320)
 
-wavelengths = [0.44, 0.48, 0.56, 0.655, 0.865, 1.61, 2.20, 0.59] # B1 - B8
+wavelengths = [0.44, 0.48, 0.56, 0.660, 0.865, 1.60] # B1 - B6
 rayleigh_conv = {}
 
 for j in range(0, len(wavelengths)):
@@ -148,7 +172,16 @@ for j in range(0, len(wavelengths)):
     y = coef_xa * reflectance_pixels - coef_xb
     rayleigh_conv["B"+str(int(j)+1)] = y/(1. + coef_xc * y)
     print(" Ok!")
+    #print(s.outputs.fulltext)
 
+rayleigh_conv = rayleigh_correction(
+    radiance_conv, 
+    "16:09:45.2093320Z",
+    "2015", "07", "21", 
+    20.22962, 
+    -86.41885, 
+    84.99899008
+    )
 
 #######################################################################
 
@@ -166,3 +199,38 @@ axes[1].set_title("Band 1 - Rayleigh Correction") # Titulo
 axes[1].set_ylabel("Latitude") # nombre del eje Y
 axes[1].set_xlabel("Longitude") # nombre del eje X
 plt.show()
+
+####################################################
+
+fai_radiance = Fai(lambda_data = radiance_conv, rayleigh_data = rayleigh_conv)
+
+fai_reflectance = Fai(lambda_data = reflectance_conv, rayleigh_data = rayleigh_conv)
+
+#######################################################################
+
+fig, axes = plt.subplots(nrows=1, ncols=2)
+
+# Ploteamos la primera imagen en el lado izquierdo
+axes[0].imshow(files["B1"])
+axes[0].set_title("Band 1 - Original") # Titulo
+axes[0].set_ylabel("Latitude") # nombre del eje Y
+axes[0].set_xlabel("Longitude") # nombre del eje X
+
+# Ploteamos la segunda imagen en el lado derecho
+axes[1].imshow( fai_reflectance )
+axes[1].set_title("Floating Algae Index") # Titulo
+axes[1].set_ylabel("Latitude") # nombre del eje Y
+axes[1].set_xlabel("Longitude") # nombre del eje X
+plt.show()
+
+#######################################################################
+
+
+dt = rayleigh_conv["B6"].copy()
+
+path_output = "rayleigh_B6.tif"
+driver = gdal.GetDriverByName('GTiff')
+filas = dt.shape[0]
+colums = dt.shape[1]
+class_dt = driver.Create(path_output, colums, filas, eType=gdal.GDT_Float32)
+class_dt = class_dt.GetRasterBand(1).WriteArray(dt)
