@@ -5,6 +5,7 @@ import re
 import threading
 import yaml
 import glob
+import numpy as np
 from Py6S import *
 from osgeo import gdal
 from natsort import natsorted
@@ -214,13 +215,14 @@ def radiance_transformation(rad_mult_params, rad_add_params, band_pathfiles):
         print("Radiance multiplicative factor: " + str(radiance_mult_band))
         print("Radiance additive factor: " + str(radiance_add_band) + "\n")
 
-    return(radiance_conv)
+    return((files, radiance_conv))
 
 
 
 def rayleigh_correction(radiance_conv, time_str, year, month, day, latitude, longitude, solar_a):
     
     s = SixS()
+    print("Six Sigma Initialization ... \n")
 
     (hora, minuto, segundo) = time_str.split(':')
     decimal_time = int(hora) + (int(minuto) / 60) + (float(segundo[0:-1])/3600)
@@ -271,7 +273,12 @@ def Fai(lambda_data, rayleigh_data):
   lambda_nir = lambda_data["B5"].copy()
   lambda_swir = lambda_data["B6"].copy()
   
-  R_nir = rayleigh_data["B4"] + (( rayleigh_data["B6"] - rayleigh_data["B4"] ) * ((lambda_nir - lambda_red + 1)/(lambda_swir - lambda_red + 1)))
+  num = lambda_nir - lambda_red
+  denom = lambda_swir - lambda_red
+  adjust = np.divide(num, denom, out = np.ones_like(num), where = denom!=0)
+  # adjust = (num) / (denom) # np.divide(num, denom, out = np.zeros_like(num), where = denom!=0)
+
+  R_nir = rayleigh_data["B4"] + (( rayleigh_data["B6"] - rayleigh_data["B4"] ) * adjust*10 )
   fai = rayleigh_data["B5"] - R_nir
 
   return(fai)
