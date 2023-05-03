@@ -137,11 +137,11 @@ def get_reflectance_parameters(path):
             if pattern_ref_mult.search(line) != None:
                 linenum += 1
                 lines_ref_mult.append((linenum, line.rstrip('\n')))
-
+                
             if pattern_ref_add.search(line) != None:
                 linenum += 1
                 lines_ref_add.append((linenum, line.rstrip('\n')))
-
+    
     return((lines_ref_add, lines_ref_mult))
 
 
@@ -267,18 +267,34 @@ def rayleigh_correction(radiance_conv, time_str, year, month, day, latitude, lon
 
 
 
+def scale_matrix(data, factor, plus):
+    return( ((data - np.min(data))/(np.max(data) - np.min(data)) * factor) + plus )
+
+
+
+def tif_save(data, path, ext):
+
+    ruta_output = path + "/" + path.split('/')[-1] + "_" + ext + ".TIF"
+    dt = data.copy()
+    driver = gdal.GetDriverByName('GTiff')
+    filas = dt.shape[0]
+    colums = dt.shape[1]
+    class_dt = driver.Create(ruta_output, colums, filas, eType=gdal.GDT_Float32)
+    class_dt = class_dt.GetRasterBand(1).WriteArray(dt)
+
+
+
 def Fai(lambda_data, rayleigh_data):
 
-  lambda_red = lambda_data["B4"].copy()
-  lambda_nir = lambda_data["B5"].copy()
-  lambda_swir = lambda_data["B6"].copy()
+    lambda_red = lambda_data["B4"].copy()
+    lambda_nir = lambda_data["B5"].copy()
+    lambda_swir = lambda_data["B6"].copy()
   
-  num = lambda_nir - lambda_red
-  denom = lambda_swir - lambda_red
-  adjust = np.divide(num, denom, out = np.ones_like(num), where = denom!=0)
-  # adjust = (num) / (denom) # np.divide(num, denom, out = np.zeros_like(num), where = denom!=0)
+    num = lambda_nir - lambda_red
+    denom = lambda_swir - lambda_red
+    adjust = np.divide(num, denom, out = np.zeros_like(num), where = denom != 0)
+    
+    R_nir = rayleigh_data["B4"] + (( rayleigh_data["B6"] - rayleigh_data["B4"] ) * adjust )
+    fai = rayleigh_data["B5"] - R_nir
 
-  R_nir = rayleigh_data["B4"] + (( rayleigh_data["B6"] - rayleigh_data["B4"] ) * adjust*10 )
-  fai = rayleigh_data["B5"] - R_nir
-
-  return(fai)
+    return(fai)

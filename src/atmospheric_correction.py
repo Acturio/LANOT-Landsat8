@@ -1,3 +1,4 @@
+from src.utils import *
 import matplotlib.pyplot as plt
 import os, glob
 import re
@@ -233,6 +234,9 @@ plt.show()
 # fai_radiance = Fai(lambda_data = radiance_conv, rayleigh_data = rayleigh_conv)
 fai_reflectance = Fai(lambda_data = reflectance_conv, rayleigh_data = rayleigh_conv)
 
+fai_reflectance_std = (fai_reflectance - np.mean(fai_reflectance))/(np.std(fai_reflectance) )
+fai_reflectance_sca = (fai_reflectance - np.min(fai_reflectance))/(np.max(fai_reflectance) - np.min(fai_reflectance)) 
+
 #######################################################################
 
 fig, axes = plt.subplots(nrows=1, ncols=2)
@@ -244,7 +248,7 @@ axes[0].set_ylabel("Latitude") # nombre del eje Y
 axes[0].set_xlabel("Longitude") # nombre del eje X
 
 # Ploteamos la segunda imagen en el lado derecho
-axes[1].imshow( ((fai_reflectance - np.mean(fai_reflectance))/(np.std(fai_reflectance) )) )
+axes[1].imshow( fai_reflectance_std )
 axes[1].set_title("Floating Algae Index") # Titulo
 axes[1].set_ylabel("Latitude") # nombre del eje Y
 axes[1].set_xlabel("Longitude") # nombre del eje X
@@ -261,7 +265,7 @@ axes[0].set_ylabel("Latitude") # nombre del eje Y
 axes[0].set_xlabel("Longitude") # nombre del eje X
 
 # Ploteamos la segunda imagen en el lado derecho
-axes[1].imshow( fai_reflectance ) 
+axes[1].imshow( fai_reflectance_sca ) 
 axes[1].set_title("Floating Algae Index") # Titulo
 axes[1].set_ylabel("Latitude") # nombre del eje Y
 axes[1].set_xlabel("Longitude") # nombre del eje X
@@ -270,9 +274,10 @@ plt.show()
 #######################################################################
 
 
-dt = rayleigh_conv["B6"].copy()
+# dt = rayleigh_conv["B6"].copy()
+dt = fai_reflectance_sca.copy()
 
-path_output = "rayleigh_B6.tif"
+path_output = "data/test1.tif"
 driver = gdal.GetDriverByName('GTiff')
 filas = dt.shape[0]
 colums = dt.shape[1]
