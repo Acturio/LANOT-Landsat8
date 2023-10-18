@@ -1,11 +1,12 @@
-# python download_data.py --filetype='band' --credPath='../auth/api_key.yaml' --savePath='../data/data_20221028'
+# python download_data.py --filetype='band' --sceneId='018046' --credPath='../oauth/api_key.yaml' --savePath='../data'
 # python download_data.py --listScenes --filetype='band' --credPath='../auth/api_key.yaml' --savePath='../data/data_20150721' --scenesFile='../test/scenes'
 import time
 import re
+import os
 import threading
 import datetime
 import argparse
-from utils import sendRequest, read_yaml_file, runDownload
+from general_utils import sendRequest, read_yaml_file, runDownload
 #from landsat8.src.utils import sendRequest, read_yaml_file, runDownload
 
 maxthreads = 7 # Threads count for downloads
@@ -28,11 +29,13 @@ if __name__ == '__main__':
     parser.add_argument('-sp', '--savePath', required=True, help='Folder path for new products')
     parser.add_argument('-l', '--listScenes', default=False, action="store_true", help="Boolean: the scenes como from list")
     parser.add_argument('-sf', '--scenesFile', required=False, help='File with IDs od scenes for download')
+    parser.add_argument('-id', '--sceneId', required=True, help='IDs od scenes for download')
     args = parser.parse_args()
     
     filetype         =  args.filetype
     scenesFile       =  args.scenesFile # 'test/scenes.txt'
-    path             =  args.savePath # "data/"
+    sceneId			 =  args.sceneId
+    path             =  args.savePath + "/" + sceneId # "data/"
     credentials_path =  args.credPath
     listScenes       =  args.listScenes
     # filetype         =  'band'
@@ -111,7 +114,7 @@ if __name__ == '__main__':
             entityIds.append(result['displayId'])
         
         
-        wrs_pattern = re.compile(r".*_018046")
+        wrs_pattern = re.compile(fr".*_{sceneId}")
         entityIds = [s for s in entityIds if wrs_pattern.match(s)]
         print("\n Entity Ids filtered:\n")
         print(entityIds)
@@ -176,6 +179,13 @@ if __name__ == '__main__':
         'returnAvailable': True
     }
     
+    folder = downloads[0]["entityId"][:-8]
+    new_file_path = path + "/" + folder
+    new_folder_path = os.path.join(os.getcwd(), new_file_path)
+    os.makedirs(new_folder_path)
+    print(f"Creating folder: {new_folder_path}")
+    time.sleep(5)
+    
     print(f"Sending download request ...\n")
     results = sendRequest(serviceUrl + "download-request", payLoad, apiKey)
     print(f"Done sending download request\n") 
@@ -183,7 +193,7 @@ if __name__ == '__main__':
       
     for result in results['availableDownloads']:       
         print(f"Get download url: {result['url']}\n" )
-        runDownload(threads, result['url'], path)
+        runDownload(threads, result['url'], new_file_path)
 
     preparingDownloadCount = len(results['preparingDownloads'])
     preparingDownloadIds = []
@@ -200,13 +210,13 @@ if __name__ == '__main__':
                 if result['downloadId'] in preparingDownloadIds:
                     preparingDownloadIds.remove(result['downloadId'])
                     print(f"Get download url: {result['url']}\n" )
-                    runDownload(threads, result['url'], path)
+                    runDownload(threads, result['url'], new_file_path)
                 
             for result in results['requested']:   
                 if result['downloadId'] in preparingDownloadIds:
                     preparingDownloadIds.remove(result['downloadId'])
                     print(f"Get download url: {result['url']}\n" )
-                    runDownload(threads, result['url'], path)
+                    runDownload(threads, result['url'], new_file_path)
         
         # Don't get all download urls, retrieve again after 30 seconds
         while len(preparingDownloadIds) > 0: 
@@ -218,7 +228,7 @@ if __name__ == '__main__':
                     if result['downloadId'] in preparingDownloadIds:
                         preparingDownloadIds.remove(result['downloadId'])
                         print(f"Get download url: {result['url']}\n" )
-                        runDownload(threads, result['url'], path)
+                        runDownload(threads, result['url'], new_file_path)
     
     print("\nGot download urls for all downloads\n")                
     # Logout
