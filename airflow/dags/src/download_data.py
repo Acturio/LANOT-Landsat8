@@ -42,6 +42,8 @@ if __name__ == '__main__':
 
     print("\nRunning Scripts...\n")
     print(date_target)
+    print("... \n ...")
+    #print(date_target + datetime.timedelta(days = 1))
     startTime = time.time()
         
     # Login
@@ -87,7 +89,7 @@ if __name__ == '__main__':
                     },
                     "upperRight": {
                         "latitude": 21.26945,
-                        "longitude": -85.3191
+                        "longitude": -79.0#-85.3191
                     }
                 },
                 "acquisitionFilter": {
@@ -107,7 +109,10 @@ if __name__ == '__main__':
         for result in results["results"]:
             print(result['displayId'])
             entityIds.append(result['displayId'])
-        
+
+        # Checking availability of data
+        if len(entityIds) == 0:
+            raise IndexError("\nScene is not available yet. Try again later\n")
         
         wrs_pattern = re.compile(fr".*_{sceneId}")
         entityIds = [s for s in entityIds if wrs_pattern.match(s)]
@@ -161,6 +166,19 @@ if __name__ == '__main__':
                         if secondaryDownload["bulkAvailable"]:
                             downloads.append({"entityId":secondaryDownload["entityId"], "productId":secondaryDownload["id"]})
     
+    if len(downloads) == 0:
+        raise IndexError("\nScene is not available yet. Try again later\n")
+
+    
+    # Remove duplicates and unnecesary files
+    filtered_downloads = []
+    unique_downloads = [dict(t) for t in {tuple(d.items()) for d in downloads}]
+    for i in unique_downloads:
+        for ext in ['B4_TIF', 'B5_TIF', 'B6_TIF', 'MTL_TXT']:
+            if ext in i['entityId']:
+                filtered_downloads.append(i)
+    downloads = filtered_downloads.copy()
+    
     # Remove the list
     payload = {
         "listId": listId
@@ -175,6 +193,7 @@ if __name__ == '__main__':
     }
     
     folder = downloads[0]["entityId"][:-8]
+    print("\n")
     new_file_path = path + "/" + folder
     new_folder_path = os.path.join(os.getcwd(), new_file_path)
     os.makedirs(new_folder_path)
